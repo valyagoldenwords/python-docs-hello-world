@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - web-hello-world
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to registry
+      uses: docker/login-action@v1
+      with:
+        registry: https://web-hello-world.azurewebsites.net/
+        username: ${{ secrets.AzureAppService_ContainerUsername_372f693b59ff4de2b825d2dee3fd0121 }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_9462c53a797c4212834e667cce4f3e04 }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: web-hello-world.azurewebsites.net/${{ secrets.AzureAppService_ContainerUsername_372f693b59ff4de2b825d2dee3fd0121 }}/appsvc/staticsite:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'web-hello-world'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_b091a91ca2944847b7e80842057a0cfe }}
+        images: 'web-hello-world.azurewebsites.net/${{ secrets.AzureAppService_ContainerUsername_372f693b59ff4de2b825d2dee3fd0121 }}/appsvc/staticsite:${{ github.sha }}'
